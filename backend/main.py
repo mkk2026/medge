@@ -71,6 +71,8 @@ async def triage(
 
     def event_stream():
         try:
+            # Keepalive ping so Render/proxies don't kill the connection
+            yield ": keepalive\n\n"
             for event in run_triage_stream(
                 image_bytes=image_bytes,
                 mime_type=image.content_type,
