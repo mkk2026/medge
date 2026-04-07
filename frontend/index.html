@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedEdge — AI Triage Assistant</title>
+  <style>
+    :root {
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface2: #273548;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --border: #334155;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo { font-size: 1.6rem; }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    header p { font-size: 0.72rem; color: var(--muted); }
+    .badge {
+      margin-left: auto;
+      background: #0c2340;
+      color: var(--accent);
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--accent);
+      letter-spacing: 0.05em;
+    }
+    main {
+      flex: 1;
+      max-width: 700px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .card-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+
+    /* Upload */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .upload-area:hover, .upload-area.drag { border-color: var(--accent); background: #0d1f30; }
+    .upload-area input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+    .upload-area p { color: var(--muted); font-size: 0.85rem; }
+    .upload-area strong { color: var(--accent); }
+    #preview-container { display: none; }
+    #preview-container img {
+      width: 100%; max-height: 260px; object-fit: contain;
+      border-radius: 8px; margin-bottom: 10px;
+    }
+    .change-btn {
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); padding: 5px 12px; border-radius: 6px;
+      cursor: pointer; font-size: 0.78rem;
+    }
+    .change-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Form */
+    label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 6px; }
+    textarea, input[type=text], select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.88rem;
+      padding: 9px 13px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    textarea { min-height: 85px; resize: vertical; }
+    textarea:focus, input[type=text]:focus, select:focus {
+      outline: none; border-color: var(--accent);
+    }
+    select option { background: var(--surface2); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 500px) { .form-row { grid-template-columns: 1fr; } }
+
+    /* Submit */
+    .submit-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 13px;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .submit-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .submit-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    /* Agentic thinking panel */
+    #thinking-panel { display: none; }
+    .thinking-header {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.8rem; color: var(--accent); font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .pulse {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+    .tool-event {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      font-size: 0.8rem;
+      animation: slideIn 0.25s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .tool-event.call { border-left: 3px solid var(--accent); }
+    .tool-event.result { border-left: 3px solid var(--green); }
+    .tool-name { font-weight: 700; color: var(--accent); font-family: monospace; }
+    .tool-label { font-size: 0.7rem; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .tool-args { color: var(--muted); margin-top: 4px; word-break: break-word; }
+
+    /* Result */
+    #result { display: none; }
+    .triage-banner {
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px;
+    }
+    .triage-banner.GREEN { background: #14532d; color: var(--green); border: 1px solid var(--green); }
+    .triage-banner.YELLOW { background: #451a03; color: var(--yellow); border: 1px solid var(--yellow); }
+    .triage-banner.RED { background: #450a0a; color: var(--red); border: 1px solid var(--red); }
+
+    .assessment-text {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 0.875rem;
+      line-height: 1.75;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .tools-used-row {
+      margin-top: 12px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    }
+    .tool-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-family: monospace;
+      font-size: 0.72rem;
+    }
+
+    .disclaimer {
+      font-size: 0.73rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      margin-top: 14px;
+      line-height: 1.5;
+    }
+    .new-btn {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 11px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.88rem;
+      margin-top: 8px;
+      transition: border-color 0.2s;
+    }
+    .new-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Error */
+    .error-box {
+      background: #450a0a; border: 1px solid var(--red);
+      color: #fca5a5; border-radius: 8px;
+      padding: 12px 16px; font-size: 0.85rem; display: none;
+    }
+
+    footer {
+      text-align: center; padding: 14px;
+      font-size: 0.72rem; color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid #0f172a;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏥</div>
+  <div>
+    <h1>MedEdge</h1>
+    <p>AI Triage Assistant · Community Health Workers</p>
+  </div>
+  <div class="badge">GEMMA 4 · AGENTIC</div>
+</header>
+
+<main>
+
+  <!-- Photo -->
+  <div class="card">
+    <div class="card-title">Patient Photo</div>
+    <div class="upload-area" id="upload-area">
+      <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" />
+      <div class="upload-icon">📷</div>
+      <p><strong>Tap to capture or upload</strong></p>
+      <p>Wound, rash, burn, or visible condition</p>
+    </div>
+    <div id="preview-container">
+      <img id="preview-img" src="" alt="Preview" />
+      <button class="change-btn" id="change-btn">Change photo</button>
+    </div>
+  </div>
+
+  <!-- Clinical Info -->
+  <div class="card">
+    <div class="card-title">Clinical Information</div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div>
+        <label for="patient-info">Patient (optional)</label>
+        <input type="text" id="patient-info" placeholder="e.g. Female, 28y, pregnant" maxlength="200" />
+      </div>
+      <div>
+        <label for="language">Response Language</label>
+        <select id="language">
+          <option>English</option>
+          <option>French</option>
+          <option>Swahili</option>
+          <option>Arabic</option>
+          <option>Portuguese</option>
+          <option>Spanish</option>
+          <option>Hausa</option>
+          <option>Amharic</option>
+          <option>Hindi</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label for="symptoms">Symptoms & History *</label>
+      <textarea id="symptoms" placeholder="Describe what you observe and what the patient reports. Include any vital signs if measured (temperature, pulse, breathing rate, oxygen level, blood pressure)." maxlength="2000"></textarea>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="error-box"></div>
+
+  <!-- Submit -->
+  <button class="submit-btn" id="submit-btn" onclick="submitTriage()">
+    Assess Patient
+  </button>
+
+  <!-- Agentic thinking panel -->
+  <div class="card" id="thinking-panel">
+    <div class="thinking-header">
+      <div class="pulse"></div>
+      <span>Gemma 4 is reasoning through the case...</span>
+    </div>
+    <div id="tool-events"></div>
+  </div>
+
+  <!-- Result -->
+  <div class="card" id="result">
+    <div class="card-title">Triage Assessment</div>
+    <div class="triage-banner" id="triage-banner">
+      <span id="triage-icon"></span>
+      <span id="triage-label"></span>
+    </div>
+    <div class="assessment-text" id="assessment-text"></div>
+    <div class="tools-used-row" id="tools-used-row"></div>
+    <p class="disclaimer">
+      ⚠️ MedEdge is a decision-support tool only. It does not replace clinical judgement.
+      Always defer to trained medical staff and local protocols when available.
+    </p>
+    <button class="new-btn" onclick="resetForm()">+ New Assessment</button>
+  </div>
+
+</main>
+
+<footer>MedEdge · Powered by Gemma 4 Agentic Function Calling · Gemma 4 Good Hackathon</footer>
+
+<script>
+  const imageInput = document.getElementById('image-input');
+  const uploadArea = document.getElementById('upload-area');
+  const previewContainer = document.getElementById('preview-container');
+  const previewImg = document.getElementById('preview-img');
+  const changeBtn = document.getElementById('change-btn');
+  const submitBtn = document.getElementById('submit-btn');
+  const errorBox = document.getElementById('error-box');
+  const resultEl = document.getElementById('result');
+  const thinkingPanel = document.getElementById('thinking-panel');
+  const toolEventsEl = document.getElementById('tool-events');
+
+  let selectedFile = null;
+
+  imageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    selectedFile = file;
+    previewImg.src = URL.createObjectURL(file);
+    uploadArea.style.display = 'none';
+    previewContainer.style.display = 'block';
+  });
+
+  changeBtn.addEventListener('click', () => {
+    selectedFile = null;
+    imageInput.value = '';
+    previewContainer.style.display = 'none';
+    uploadArea.style.display = 'block';
+  });
+
+  uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('drag'); });
+  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag'));
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      selectedFile = file;
+      previewImg.src = URL.createObjectURL(file);
+      uploadArea.style.display = 'none';
+      previewContainer.style.display = 'block';
+    }
+  });
+
+  function showError(msg) {
+    errorBox.textContent = '⚠ ' + msg;
+    errorBox.style.display = 'block';
+    setTimeout(() => { errorBox.style.display = 'none'; }, 8000);
+  }
+
+  function addToolEvent(event) {
+    const el = document.createElement('div');
+
+    if (event.type === 'tool_call') {
+      el.className = 'tool-event call';
+      const argStr = Object.entries(event.args || {})
+        .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+        .join(', ');
+      el.innerHTML = `
+        <div class="tool-label">🔧 Calling tool</div>
+        <div class="tool-name">${event.name}()</div>
+        ${argStr ? `<div class="tool-args">${argStr}</div>` : ''}
+      `;
+    } else if (event.type === 'tool_result') {
+      el.className = 'tool-event result';
+      const result = event.result || {};
+      let summary = '';
+      if (result.protocols_found !== undefined) summary = `Found ${result.protocols_found} protocol(s)`;
+      else if (result.risk_level) summary = `Vital signs risk: ${result.risk_level}`;
+      else if (result.action) summary = result.action;
+      else summary = 'Done';
+      el.innerHTML = `
+        <div class="tool-label">✅ Result from ${event.name}</div>
+        <div style="color: var(--green); font-weight: 600">${summary}</div>
+      `;
+    }
+
+    toolEventsEl.appendChild(el);
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  const LEVELS = {
+    GREEN: { icon: '✅', text: 'GREEN — Manage Locally' },
+    YELLOW: { icon: '⚠️', text: 'YELLOW — Monitor Closely' },
+    RED: { icon: '🚨', text: 'RED — REFER URGENTLY' },
+  };
+
+  async function submitTriage() {
+    errorBox.style.display = 'none';
+    resultEl.style.display = 'none';
+    thinkingPanel.style.display = 'none';
+    toolEventsEl.innerHTML = '';
+
+    const symptoms = document.getElementById('symptoms').value.trim();
+    const patientInfo = document.getElementById('patient-info').value.trim();
+    const language = document.getElementById('language').value;
+
+    if (!selectedFile) { showError('Please attach a photo.'); return; }
+    if (!symptoms || symptoms.length < 3) { showError('Please describe the symptoms.'); return; }
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<div class="spinner"></div> Analyzing...';
+    thinkingPanel.style.display = 'block';
+    thinkingPanel.scrollIntoView({ behavior: 'smooth' });
+
+    const formData = new FormData();
+    formData.append('image', selectedFile);
+    formData.append('symptoms', symptoms);
+    formData.append('patient_info', patientInfo);
+    formData.append('language', language);
+
+    try {
+      const resp = await fetch('/api/triage', { method: 'POST', body: formData });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        showError(err.detail || 'Request failed.');
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+
+          let event;
+          try { event = JSON.parse(raw); } catch { continue; }
+
+          if (event.type === 'tool_call' || event.type === 'tool_result') {
+            addToolEvent(event);
+          } else if (event.type === 'final') {
+            thinkingPanel.style.display = 'none';
+
+            const banner = document.getElementById('triage-banner');
+            banner.className = 'triage-banner ' + event.triage_level;
+            document.getElementById('triage-icon').textContent = LEVELS[event.triage_level]?.icon || '🔵';
+            document.getElementById('triage-label').textContent = LEVELS[event.triage_level]?.text || event.triage_level;
+            document.getElementById('assessment-text').textContent = event.assessment;
+
+            const toolsRow = document.getElementById('tools-used-row');
+            if (event.tools_used?.length) {
+              toolsRow.innerHTML = 'Tools used: ' + event.tools_used.map(t => `<span class="tool-chip">${t}()</span>`).join('');
+            }
+
+            resultEl.style.display = 'block';
+            resultEl.scrollIntoView({ behavior: 'smooth' });
+
+          } else if (event.type === 'error') {
+            thinkingPanel.style.display = 'none';
+            showError(event.message);
+          }
+        }
+      }
+
+    } catch (err) {
+      thinkingPanel.style.display = 'none';
+      showError('Network error. Please try again.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Assess Patient';
+    }
+  }
+
+  function resetForm() {
+    selectedFile = null;
+    imageInput.value = '';
+    document.getElementById('symptoms').value = '';
+    document.getElementById('patient-info').value = '';
+    previewContainer.style.display = 'none';
+    uploadArea.style.display = 'block';
+    resultEl.style.display = 'none';
+    thinkingPanel.style.display = 'none';
+    toolEventsEl.innerHTML = '';
+    errorBox.style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+
+</body>
+</html>
