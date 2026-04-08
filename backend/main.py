@@ -96,4 +96,4 @@ async def triage(
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "model": "gemma-4-27b-it", "mode": "agentic-function-calling"}
+    return {"status": "ok", "model": "gemma-4-31b-it", "mode": "agentic-function-calling"}

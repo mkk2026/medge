@@ -23,7 +23,17 @@ echo "  Offline Triage Assistant · Powered by Gemma 4"
 echo ""
 
 cd "$PROJECT_DIR"
-source venv/bin/activate
+
+# Create venv if it doesn't exist
+if [ ! -d "venv" ]; then
+  echo "[*] Creating virtual environment..."
+  python3 -m venv venv
+  source venv/bin/activate
+  echo "[*] Installing dependencies..."
+  pip install -r requirements.txt
+else
+  source venv/bin/activate
+fi
 
 echo "[*] Starting MedEdge on http://localhost:8000"
 echo "[*] Open your browser to http://localhost:8000"

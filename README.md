@@ -12,9 +12,7 @@ A health worker photographs a patient's condition. MedEdge analyzes it, queries 
 
 ## Demo
 
-**[Live Demo →](https://your-demo-url)**
-
-![MedEdge Screenshot](docs/screenshot.png)
+**[Live Demo →](https://medge.onrender.com/)**
 
 ---
 
@@ -80,7 +78,7 @@ Health Worker
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/medge.git
+git clone https://github.com/mkk2026/medge.git
 cd medge
 python3 -m venv venv
 source venv/bin/activate

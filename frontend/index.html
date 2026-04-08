@@ -238,6 +238,28 @@
     }
     .new-btn:hover { border-color: var(--accent); color: var(--accent); }
 
+    /* Sample case */
+    .sample-btn {
+      width: 100%;
+      background: none;
+      border: 1px dashed var(--border);
+      color: var(--muted);
+      padding: 10px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+    }
+    .sample-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Assessment markdown */
+    .assessment-text h3 { font-size: 0.95rem; color: var(--accent); margin: 14px 0 6px 0; }
+    .assessment-text h3:first-child { margin-top: 0; }
+    .assessment-text p { margin: 4px 0; }
+    .assessment-text ul, .assessment-text ol { margin: 4px 0 4px 18px; }
+    .assessment-text li { margin: 2px 0; }
+    .assessment-text strong { color: var(--text); }
+
     /* Error */
     .error-box {
       background: #450a0a; border: 1px solid var(--red);
@@ -320,6 +342,11 @@
   <!-- Error -->
   <div class="error-box" id="error-box"></div>
 
+  <!-- Sample case for judges -->
+  <button class="sample-btn" id="sample-btn" onclick="loadSampleCase()">
+    🧪 Load sample case (wound + fever) — for demo
+  </button>
+
   <!-- Submit -->
   <button class="submit-btn" id="submit-btn" onclick="submitTriage()">
     Assess Patient
@@ -355,6 +382,38 @@
 <footer>MedEdge · Powered by Gemma 4 Agentic Function Calling · Gemma 4 Good Hackathon</footer>
 
 <script>
+  function renderMarkdown(md) {
+    return md
+      .replace(/### (.+)/g, '<h3>$1</h3>')
+      .replace(/## (.+)/g, '<h3>$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
+      .replace(/^[-•]\s+(.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+      .replace(/\n{2,}/g, '<br><br>')
+      .replace(/\n/g, '<br>');
+  }
+
+  // Sample image: a 1x1 red pixel as placeholder (triggers the flow)
+  const SAMPLE_IMAGE_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==";
+
+  function loadSampleCase() {
+    // Create a tiny sample image file
+    fetch(SAMPLE_IMAGE_B64)
+      .then(r => r.blob())
+      .then(blob => {
+        const file = new File([blob], "sample_wound.png", { type: "image/png" });
+        selectedFile = file;
+        previewImg.src = SAMPLE_IMAGE_B64;
+        uploadArea.style.display = 'none';
+        previewContainer.style.display = 'block';
+      });
+    document.getElementById('patient-info').value = "Male, 35y, farmer, no known allergies";
+    document.getElementById('symptoms').value = "Deep laceration on left forearm, approximately 6cm long, some dirt contamination visible. Patient reports the wound happened 3 hours ago from a machete while clearing brush. Temperature 38.2°C, heart rate 92 bpm, respiratory rate 18/min. Mild swelling around wound edges.";
+    document.getElementById('language').value = "English";
+    document.getElementById('sample-btn').style.display = 'none';
+  }
+
   const imageInput = document.getElementById('image-input');
   const uploadArea = document.getElementById('upload-area');
   const previewContainer = document.getElementById('preview-container');
@@ -503,7 +562,7 @@
             banner.className = 'triage-banner ' + event.triage_level;
             document.getElementById('triage-icon').textContent = LEVELS[event.triage_level]?.icon || '🔵';
             document.getElementById('triage-label').textContent = LEVELS[event.triage_level]?.text || event.triage_level;
-            document.getElementById('assessment-text').textContent = event.assessment;
+            document.getElementById('assessment-text').innerHTML = renderMarkdown(event.assessment);
 
             const toolsRow = document.getElementById('tools-used-row');
             if (event.tools_used?.length) {
@@ -540,6 +599,7 @@
     thinkingPanel.style.display = 'none';
     toolEventsEl.innerHTML = '';
     errorBox.style.display = 'none';
+    document.getElementById('sample-btn').style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 </script>
